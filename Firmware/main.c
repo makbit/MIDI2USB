@@ -21,14 +21,13 @@
 #include "globals.h"
 
 // Global variables
-SI_SEG_IDATA uint8_t aUartBufferTX[UART_BUF_SIZE];
-SI_SEG_IDATA uint8_t aUartBufferRX[UART_BUF_SIZE];
-SI_SEG_IDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
+SI_SEG_XDATA uint8_t aUartBufferTX[UART_BUF_SIZE];
+SI_SEG_XDATA uint8_t aUartBufferRX[UART_BUF_SIZE];
+SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
 SI_SEG_IDATA uint8_t nUartBytesTX = 0;
 SI_SEG_IDATA uint8_t nUartBytesRX = 0;
 SI_SEG_IDATA uint8_t nMidiCount   = 0;
 
-static SI_SEG_XDATA uint8_t usbBuffer[SLAB_USB_EP2OUT_MAX_PACKET_SIZE];
 //---------------------------------------------------------------------------//
 //                                                                           //
 //---------------------------------------------------------------------------//
@@ -64,6 +63,8 @@ int main( void )
 //---------------------------------------------------------------------------//
 // USB API Callbacks                                                         //
 //---------------------------------------------------------------------------//
+static SI_SEG_XDATA uint8_t usbBuffer[SLAB_USB_EP2OUT_MAX_PACKET_SIZE];
+
 #if SLAB_USB_STATE_CHANGE_CB
 void USBD_DeviceStateChangeCb(USBD_State_TypeDef oldState,
                               USBD_State_TypeDef newState)

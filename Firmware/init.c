@@ -20,7 +20,7 @@ void WDT_Init (void)
 void PORT_Init (void)
 {
 	P0MDOUT       |= 0x10;             // Push-Pull mode for UART_TX P0.4
-	P1MDOUT       |= 0x03;             // Push-Pull mode for LED_OUT P1.0
+	P1MDOUT       |= 0x03;             // Push-Pull mode for LEDS P1.0, P1.1
 	XBR0           = 0x01;             // Enable UART on P0.4(TX), P0.5(RX)
 	XBR1           = 0x40;             // Enable crossbar and weak pull-ups
 	P1             = 0;                // Turn off Leds
@@ -78,7 +78,7 @@ SI_INTERRUPT (UART0_ISR, UART0_IRQn)
 			aUartBufferRX[nUartBytesRX] = SBUF0;
 			nUartBytesRX++;
 		}
-		// Try to convert MIDI Packet to USB!
+		// Convert MIDI Packet to USB MIDI Event.
 		nUartBytesRX -= MIDI2USB(aUartBufferRX, nUartBytesRX);
 		// MIDI2USB(u8DataByte, 1);
 	}
@@ -105,7 +105,7 @@ void TIMER_Init (void)
 SI_INTERRUPT (Timer2_ISR, TIMER2_IRQn)
 {
 	nSystemTick++;                     // Every millisecond (1/1000s)
-	TMR2CN0_TF2H = 0;                  // Reser IRQ flag
+	TMR2CN0_TF2H = 0;                  // Reset IRQ flag
 
 	if( nSystemTick==1000 )
 	{

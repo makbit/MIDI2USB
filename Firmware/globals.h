@@ -12,11 +12,11 @@
 #define LED_OUT         P1_B0
 
 #define UART_BUF_SIZE   30
-#define MIDI_BUF_SIZE   40
+#define MIDI_BUF_SIZE   (SLAB_USB_EP1IN_MAX_PACKET_SIZE)
 
-extern SI_SEG_IDATA uint8_t aUartBufferTX[UART_BUF_SIZE];
-extern SI_SEG_IDATA uint8_t aUartBufferRX[UART_BUF_SIZE];
-extern SI_SEG_IDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
+extern SI_SEG_XDATA uint8_t aUartBufferTX[UART_BUF_SIZE];
+extern SI_SEG_XDATA uint8_t aUartBufferRX[UART_BUF_SIZE];
+extern SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
 extern SI_SEG_IDATA uint8_t nUartBytesRX;
 extern SI_SEG_IDATA uint8_t nUartBytesTX;
 extern SI_SEG_IDATA uint8_t nMidiCount;
@@ -30,5 +30,5 @@ extern void    PORT_Init   (void);
 extern void    SYSCLK_Init (void);
 extern void    TIMER_Init  (void);
 extern void    UART_Init   (void);
-extern uint8_t MIDI2USB    (uint8_t* aBuffer, uint8_t nBytes);
+extern uint8_t MIDI2USB    (uint8_t SI_SEG_XDATA * aBuffer, uint8_t nBytes);
 //---------------------------------------------------------------------------//
