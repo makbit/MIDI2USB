@@ -157,7 +157,7 @@ SI_SEGMENT_VARIABLE
 	//--- Standard BULK IN Endpoint Descriptor
 	USB_AUDIO_EP_DESCSIZE,             // bLength, 9 bytes
 	USB_ENDPOINT_DESCRIPTOR,           // bDescriptorType, 0x05
-	USB_EP_DIR_IN| 0x01,               // bEndpointAddress, IN EP #1 (0x81)
+	USB_EP_DIR_IN | 0x01,              // bEndpointAddress, IN EP #1 (0x81)
 	USB_EPTYPE_BULK,                   // bmAttributes, 0x02 (bulk)
 	SLAB_USB_EP1IN_MAX_PACKET_SIZE,    // wMaxPacketSize(LSB), 64
 	0,                                 // wMaxPacketSize(LSB), 0

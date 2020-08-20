@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------//
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // File:    Init.c - initialization routines.                                //
-// Date:    May 2020                                                         //
+// Date:    May-August 2020                                                  //
 //---------------------------------------------------------------------------//
 #include "globals.h"
 #include <si_toolchain.h>
@@ -40,26 +40,54 @@ void SYSCLK_Init (void)
 	HFO0CN    = 0x83;                  // IOSCEN, IFCN=3 (SYSCLK_div_1)
 	for( i = 0; i < 1000; i++ )
 	{
-		if( HFO0CN & 0x40 ) break;     // wait for oscillator READY flag
+		if( HFO0CN & 0x40 ) break;     // Wait for oscillator READY flag
 	}
 }
 
 //---------------------------------------------------------------------------//
 // Configure the UART0 using Timer1, for <BAUDRATE> and 8-N-1.               //
 //---------------------------------------------------------------------------//
-void UART_Init (void)
+void UART0_Init (void)
 {
-	uint8_t     div = 12000000/31250/2;// MIDI Baudrate @31250
+	uint8_t     div = 4000000/31250/2; // MIDI Baudrate @31250
 	SCON0           = 0x10;            // 8-bit mode, TI/RI clear, Rcv Enable
 	CKCON0         &= ~0x0B;           // Timer1 clock control (clear)
-	CKCON0         |= 0x01;            // Timer1 @prescaler, SYSCLK_DIV_4
+	CKCON0         |= 0x00;            // Timer1 @prescaler, SYSCLK_DIV_12
 	TMOD           &= ~0xF0;           // Timer1 clear mode bits
 	TMOD           |= 0x20;            // Timer1 8-bit autoreload
 	TH1             = -div;            // @31250 Hz (12M/31250/2)
-	TL1             = TH1;             // Low:=High
+	TL1             = TH1;             // TLow := THigh
 	TCON_TR1        = 1;               // Timer1 enable
 	IP             |= 0x10;            // UART0 high priority (PS0)
 	IE_ES0          = 1;               // Enable UART0 interrupts
+}
+
+//---------------------------------------------------------------------------//
+// Configure the UART1, for <BAUDRATE> and 8-N-1.                            //
+//---------------------------------------------------------------------------//
+void UART1_Init (void)
+{
+	uint8_t     div = 4000000/31250/2; // MIDI Baudrate @31250
+	SCON1           = 0x10;            // RX enable, Extra: off.
+	SMOD1           = 0x0C;            // MCE, SPT, PE, XBE: off; SDL: 8-bits.
+	SBCON1          = 0;               // Baud rate prescaler: SYSCLK_DIV_12
+	SBCON1         |= 0x40;            // Enable baud rate generator
+	SBRLH1          = 0xFF;            // Baud rate generator: High byte
+	//SBRLH1          = 0;               // Baud rate generator: High byte
+	SBRLL1          = -div;            // Baud rate generator: Low byte
+	EIE2           |= 0x02;            // Enable UART1 interrupts (ES1)
+}
+
+//---------------------------------------------------------------------------//
+static volatile SI_SEG_IDATA uint8_t bUartTX = 0;
+//---------------------------------------------------------------------------//
+// Outputs character into UART0 in blocking mode.                            //
+//---------------------------------------------------------------------------//
+void UART0_Write (uint8_t ch)
+{
+	bUartTX  = 1;                      // Set UART0 TX flag
+	SBUF0    = ch;                     // Write data into UART
+	while( bUartTX );                  // Wait I/O complete
 }
 
 //---------------------------------------------------------------------------//
@@ -69,32 +97,42 @@ void UART_Init (void)
 //---------------------------------------------------------------------------//
 SI_INTERRUPT (UART0_ISR, UART0_IRQn)
 {
-	if( SCON0_RI == 1 )            // Check if RX flag is set
+	if( SCON0_RI == 1 )                // Check if RX flag is set
 	{
-		SCON0_RI = 0;              // Clear interrupt flag
-		LED_IN = 1;                // Blink led
-		if( nUartBytesRX < UART_BUF_SIZE )
-		{
-			aUartBufferRX[nUartBytesRX] = SBUF0;
-			nUartBytesRX++;
-		}
-		// Convert MIDI Packet to USB MIDI Event.
-		nUartBytesRX -= MIDI2USB(aUartBufferRX, nUartBytesRX);
-		// MIDI2USB(u8DataByte, 1);
+		LED_IN   = 1;                  // Input LED on
+		SCON0_RI = 0;                  // Clear interrupt flag
+		MIDI2USB( SBUF0 );             // Parse MIDI data
 	}
-	if( SCON0_TI == 1 )            // Check if TX flag is set
+	if( SCON0_TI == 1 )                // Check if TX flag is set
 	{
-		SCON0_TI = 0;              // Clear interrupt flag
+		SCON0_TI = 0;                 // Clear interrupt flag
+		bUartTX  = 0;                 // Clear global TX flag (complete)
 	}
 }
 
-/*
+//---------------------------------------------------------------------------//
+// UART1 interrupt handler                                                   //
+//---------------------------------------------------------------------------//
+SI_INTERRUPT (UART1_ISR, UART1_IRQn)
+{
+	if( SCON1 & 0x01 )                 // Check RI flag (FIFO not empty)
+	{
+		LED_IN = 1;                    // Input LED on
+		MIDI2USB( SBUF1 );             // Read MIDI data, Auto clear IRQ flag
+	}
+	if( SCON1 & 0x02 )                 // Check if TX flag is set
+	{
+		SCON1 &=~0x02;                 // Clear interrupt flag
+	}
+}
+
 //===========================================================================//
-static uint16_t nSystemTick;
+/*
+static volatile uint16_t nSystemTick;
 //---------------------------------------------------------------------------//
 void TIMER_Init (void)
 {
-	uint16_t div    = 65536 - 48000/12;// 100kHz
+	uint16_t div    = 65536 - 48000/12;// 1kHz
 	TMR2CN0         = 0;               // Timer2 SysClk/12, Auto, RunCtrl off
 	TMR2RL          = div;             // Timer2: 100kHz
 	TMR2            = div;             // Timer2 initial counter value
@@ -109,7 +147,6 @@ SI_INTERRUPT (Timer2_ISR, TIMER2_IRQn)
 
 	if( nSystemTick==1000 )
 	{
-		nMidiCount = 2;
 		nSystemTick = 0;
 	LED_OUT = 1-LED_OUT;
 	}
