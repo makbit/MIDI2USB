@@ -39,11 +39,11 @@ typedef union
 {
 	struct PACKET
 	{
-	    uint8_t  cable : 4;            // Cable Number (we use #0)
-	    uint8_t  cin   : 4;            // Code Index Number (cmd: 0x08)
-    	uint8_t  cmd;                  // MIDI command (status byte)
-    	uint8_t  data1;                // MIDI data byte #1
-    	uint8_t  data2;                // MIDI data byte #2
+		uint8_t  cable : 4;            // Cable Number (we use #0)
+		uint8_t  cin   : 4;            // Code Index Number (cmd: 0x08)
+		uint8_t  cmd;                  // MIDI command (status byte)
+		uint8_t  data1;                // MIDI data byte #1
+		uint8_t  data2;                // MIDI data byte #2
 	};
 	uint8_t buffer[sizeof(struct PACKET)];
 } MIDI_EVENT_PACKET;
