@@ -13,15 +13,15 @@ The [`Hardware`](Hardware) folder contains Eagle CAD 9.0 schematics files, board
 
 In the [`Firmware`](Firmware) folder you will find all C-source files for this project. Files from SiLabs SDK are located in the EFM8 subfolder. The project was developed with the [IAR Embedded Workbench IDE 8051](https://www.iar.com/iar-embedded-workbench/#!?architecture=8051). I beleive the source code is compatible with the [Keil uVision PK51](https://www.keil.com/c51/pk51kit.asp).
 
-##### Some pictures of this MIDI2USB converter :cool:
-![MIDI2USB-1-Box.jpg](MIDI2USB-1-Box.jpg)
-![MIDI2USB-2-InBox.jpg](MIDI2USB-2-InBox.jpg)
-![MIDI2USB-3-Back.jpg](MIDI2USB-3-Back.jpg)
+### Some pictures of this MIDI2USB converter :cool:
+![Img/MIDI2USB-1-Box.jpg](Img/MIDI2USB-1-Box.jpg)
+![Img/MIDI2USB-2-InBox.jpg](Img/MIDI2USB-2-InBox.jpg)
+![Img/MIDI2USB-3-Back.jpg](Img/MIDI2USB-3-Back.jpg)
 
 ### TODO :pen:
-- [] Switch to UART#1 with FIFO buffer;
-- [] Test and improve SysEx handler;
-- [] Move all components to one side;
-- [] Find a sponsor :smile:
+- [ ] Switch to UART#1 with FIFO buffer;
+- [ ] Test and improve SysEx handler;
+- [ ] Move all components to one side;
+- [ ] Find a sponsor :smile:
 
 [GitHub readme tips&tricks](https://help.github.com/articles/basic-writing-and-formatting-syntax/)
