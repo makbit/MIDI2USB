@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------//
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // File:    descriptors.c - this file contains USB descriptor data tables.   //
-// Date:    May 2020                                                         //
+// Date:    September 2021, May 2020                                         //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
 // Info:    https://keil.com/pack/doc/mw/USB/html/_u_s_b__descriptors.html   //
 //          midi10.pdf ("USB Device Class Definition  for  MIDI Devices")    //
@@ -39,14 +39,14 @@ SI_SEGMENT_VARIABLE
 {
 	USB_DEVICE_DESCSIZE,               // bLength, 18 bytes
 	USB_DEVICE_DESCRIPTOR,             // bDescriptorType, 1
-	htole16(0x0110),                   // bcdUSB Ver, 1.10
+	htole16(0x0110),                   // bcdUSB USB Ver, 1.10
 	0x00,                              // bDeviceClass, 0 for Audio
 	0x00,                              // bDeviceSubClass, 0 for Audio
 	0x00,                              // bDeviceProtocol, 0 for Audio
 	SLAB_USB_EP1IN_MAX_PACKET_SIZE,    // bMaxPacketSize0, 64 bytes
-	htole16(0x1209),                   // idVendor, Free GPL (SiLabs 0x10C4)
-	htole16(0x7522),                   // idProduct
-	htole16(0x0100),                   // bcdDevice, 1.00
+	htole16(0x1209),                   // idVendor, Free GPL (or SiLabs 0x10C4)
+	htole16(0x7522),                   // idProduct, Makbit MIDI2USB
+	htole16(0x0120),                   // bcdDevice, my ver. 1.20
 	0x01,                              // iManufacturer string
 	0x02,                              // iProduct string
 	0x03,                              // iSerialNumber (no serial string)
@@ -140,7 +140,7 @@ SI_SEGMENT_VARIABLE
 	2,                                 // baSourceID, this <=> Jack #2
 	1,                                 // baSourcePin
 	0,                                 // iJack, unused
-	//--- MIDI OUT JACK EMB, p.41
+	//--- MIDI OUT JACK EXT, p.41
 	USB_OUT_JACK_DESCSIZE,             // bLength, 9 bytes
 	USB_CS_INTERFACE_DESCRIPTOR,       // bDescriptorType, 0x24
 	MIDI_CS_IF_OUT_JACK,               // bDescriptorSubtype, 0x03
@@ -197,7 +197,7 @@ SI_SEGMENT_VARIABLE
 #define MFR_SIZE             13
 #define PROD_STRING          'M','I','D','I','2','U','S','B','\0'
 #define PROD_SIZE            9
-#define SER_STRING           '1','.','0','\0'
+#define SER_STRING           '1','.','2','\0'
 #define SER_SIZE             4
 
 LANGID_STATIC_CONST_STRING_DESC(langDesc[], LANG_STRING);
