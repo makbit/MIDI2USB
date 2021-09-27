@@ -2,7 +2,7 @@
 // Project: Midi2Usb - firmware that connects musical instruments to PC.     //
 //                     Converter USB <=> MIDI (in, out).                     //
 // File:    Main.c - Firmware entry point, initialization and main loop.     //
-// Date:    May-August 2020, version 0.2                                     //
+// Date:    September 2021, May-August 2020, version 1.2                     //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
 // Source:  https://github.com/makbit/Midi2USB                               //
 // License: Free for non-commercial use.                                     //
@@ -34,38 +34,38 @@ int main( void )
 	WDT_Init();                             // Disable WDTimer (not used)
 	PORT_Init();                            // Initialize ports (UART, LEDs)
 	SYSCLK_Init();                          // Set system clock to 48MHz
-	UART0_Init();                           // Initialize UART0 @31250, 8-N-1
+	UART1_Init();                           // Initialize UART @31250, 8-N-1
 	USBD_Init( &usbInitStruct );            // Initialize USB, clock calibrate
-	LED_IN  = 1;                            // Blink LED
-	LED_OUT = 1;                            // Blink LED
-	IE_EA   = 1;                            // Global enable IRQ
+	LED_IN  = true;                         // Blink LED (off after usb-cfg)
+	LED_OUT = true;                         // Blink LED (off after usb-cfg)
+	IE_EA   = true;                         // Global enable IRQ
 
 	while(1)
 	{
 		//--- MIDI => USB
-		if( nMidiCount > 0 )
+		if( nMidiCount >= sizeof(uint32_t) )
 		{
-			IE_EA  = 0;                     // Begin: Critical section
+			IE_EA  = false;                 // Begin: Critical section
 			if( USB_STATUS_OK==USBD_Write(EP1IN,aMidiBuffer,nMidiCount,false) )
 			{
 				nMidiCount = 0;             // Reset MIDI data byte counter
 			}
-			IE_EA  = 1;                     // End of: Critical section
-			LED_IN = 0;                     // Turn off input LED
+			IE_EA  = true;                  // End of: Critical section
+			LED_IN = false;                 // Turn off input LED
 		}
 
 		//--- USB => MIDI
 		if( nUsbCount )
 		{
 			uint8_t i;
-			LED_OUT = 1;                    // Turn on Led on New packet
+			LED_OUT = true;                 // Turn on Led for New packet
 			for(i = 0; i < nUsbCount; i++)  // Process every data byte
 			{
 				USB2MIDI( aUsbBuffer[i] );  // Convert USB packet into MIDI
 			}
 			nUsbCount = 0;                  // Reset counter
 			USBD_Read(EP2OUT, aUsbBuffer, sizeof(aUsbBuffer), true);
-			LED_OUT = 0;                    // Turn off Led, when done
+			LED_OUT = false;                // Turn off Led, when done
 		}
 	}
 }
@@ -85,6 +85,7 @@ void USBD_DeviceStateChangeCb(USBD_State_TypeDef oldState,
 	if (oldState == USBD_STATE_SUSPENDED)
 	{
 	}
+	// Start reading, when USB is configured and ready
 	if (newState == USBD_STATE_CONFIGURED)
 	{
 		LED_IN  = 0;                        // Turn off LED
