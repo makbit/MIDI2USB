@@ -2,11 +2,12 @@
 // File:    Globals.h - Definitions, Macros, Global variables and functions. //
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
-// Date:    May-August 2020                                                  //
+// Date:    September 2021, May-August 2020                                  //
 //---------------------------------------------------------------------------//
 #include <stdint.h>
+#include <stdbool.h>
 #include <SI_EFM8UB2_Defs.h>
-#include "efm8_usb.h"
+#include <efm8_usb.h>
 
 #define LED_IN          P1_B1
 #define LED_OUT         P1_B0
@@ -16,8 +17,8 @@
 
 extern volatile SI_SEG_IDATA uint8_t nUsbCount;
 extern volatile SI_SEG_IDATA uint8_t nMidiCount;
-extern SI_SEG_XDATA uint8_t aUsbBuffer [USB_BUF_SIZE];
-extern SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
+extern          SI_SEG_XDATA uint8_t aUsbBuffer [USB_BUF_SIZE];
+extern          SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
 
 extern const USBD_Init_TypeDef usbInitStruct;
 //---------------------------------------------------------------------------//
@@ -32,4 +33,5 @@ extern void UART1_Init  (void);
 extern void MIDI2USB    (uint8_t dataByte);
 extern void USB2MIDI    (uint8_t dataSize);
 extern void UART0_Write (uint8_t ch);
+extern void UART1_Write (uint8_t ch);
 //---------------------------------------------------------------------------//
