@@ -2,7 +2,7 @@
 // File:    Midi.c - MIDI constant definitions, MIDI Event packet parser.    //
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
-// Date:    May-August 2020                                                  //
+// Date:    September 2021, May-August 2020                                  //
 //---------------------------------------------------------------------------//
 #include "globals.h"
 
@@ -17,23 +17,41 @@
 #define MIDI_PROGRAM_CHANGE       0xC0 // 1 byte data
 #define MIDI_CHANNEL_PRESSURE     0xD0 // 1 byte data
 #define MIDI_PITCH_BEND           0xE0 // 2 bytes data
+
 #define MIDI_STATUS_BITMASK       0x80 // Status byte mask (p.5)
 #define MIDI_CMD_BITMASK          0xF0 // Command bitmask (p.5)
 
-// System Exclusive (p.29)
-#define MIDI_SYSEX_START          0xF0
-#define MIDI_MTC_QUARTER_FRAME    0xF1 // 1 byte data
-#define MIDI_SONG_POSITION_PTR    0xF2 // 2 bytes data
+#define GET_MIDI_CMD(arg)         ((arg) & MIDI_CMD_BITMASK)
+#define MIDI_IS_STATUS(arg)       (((arg) & MIDI_STATUS_BITMASK) ? 1 : 0)
+#define MIDI_IS_DATA(arg)         (((arg) & MIDI_STATUS_BITMASK) ? 0 : 1)
+//---------------------------------------------------------------------------//
+// SysEx command: F0 <sub-ID> <data bytes> F7                                //
+//        Sub-ID: <0-7C | 7E | 7F | (00 00 id)>                              //
+// Pages: 100, 107                                                           //
+//---------------------------------------------------------------------------//
+// System common msg (p.27) System real-time msg (p.30) System Exclusive (p.34)
+#define MIDI_SYSEX_START          0xF0 // 0..N bytes data
+#define MIDI_TIME_CODE            0xF1 // 1 byte data
+#define MIDI_SONG_POSITION        0xF2 // 2 bytes data
 #define MIDI_SONG_SELECT          0xF3 // 1 byte data
 #define MIDI_TUNE_REQUEST         0xF6 // no data
-#define MIDI_SYSEX_END            0xF7
+#define MIDI_SYSEX_END            0xF7 // no data
 #define MIDI_CLOCK                0xF8 // no data
 #define MIDI_TICK                 0xF9 // no data
 #define MIDI_START                0xFA // no data
 #define MIDI_CONTINUE             0xFB // no data
 #define MIDI_STOP                 0xFC // no data
 #define MIDI_ACTIVE_SENSE         0xFE // no data
-#define MIDI_RESET                0xFF // no data
+#define MIDI_SYSTEM_RESET         0xFF // no data
+
+typedef enum {
+	MIDI_STATE_IDLE = 0,               // Parser is idle/ready (in/out)
+	MIDI_STATE_STATUS,                 // Read Status/Command byte (out)
+	MIDI_STATE_DATA,                   // Read single data byte
+	MIDI_STATE_DATA1,                  // Read first (1 of 2) data byte
+	MIDI_STATE_DATA2,                  // Read second (2 of 2) data byte
+	MIDI_STATE_SYSEX                   // SysEx state
+} MIDI_STATE;
 
 typedef union
 {
@@ -42,170 +60,204 @@ typedef union
 		uint8_t  cable : 4;            // Cable Number (we use #0)
 		uint8_t  cin   : 4;            // Code Index Number (cmd: 0x08)
 		uint8_t  cmd;                  // MIDI command (status byte)
-		uint8_t  data1;                // MIDI data byte #1
-		uint8_t  data2;                // MIDI data byte #2
-	};
+		uint8_t  data[2];              // MIDI data bytes (1 or 2)
+	}midi;
 	uint8_t buffer[sizeof(struct PACKET)];
 } MIDI_EVENT_PACKET;
 
-typedef enum {
-	IDLE = 0,                          // Parser is idle/ready (in/out)
-	STATUS,                            // Read Status/Command byte (out)
-	DATA11,                            // Read 1 of 1 data byte (in/out)
-	DATA12,                            // Read 1 of 2 data bytes (in/out)
-	DATA22,                            // Read 2 of 2 data bytes (in/out)
-	SYSEX                              // SysEx state
-	//SYSEX2                              // SysEx state
-} MIDI_STATE;
-
-
 //---------------------------------------------------------------------------//
-// MIDI Converter (parser), call from IRQ.                                   //
+// MIDI (Uart RX) converter (parser), called from IRQ.                       //
 // Input: Data byte from UART (MIDI).                                        //
+// Info: see p.16 (midi10), uses 32-bit packets, added zero-padding byte.    //
+// MIDI Packet:                                                              //
+//              <status/cmd byte> [<data byte #0>, <data byte #1>]           //
 //---------------------------------------------------------------------------//
-void MIDI2USB(uint8_t dataByte)
+void MIDI2USB(uint8_t dataRX)
 {
 	static MIDI_STATE        state;
 	static MIDI_EVENT_PACKET packet;
 
-	if( state==IDLE )
+	if( MIDI_IS_STATUS(dataRX) )            // System Real Time message
 	{
-		switch( dataByte & MIDI_CMD_BITMASK )
+		switch( dataRX )
+		{
+			case MIDI_SYSTEM_RESET:
+				nMidiCount = 0;
+				state = MIDI_STATE_IDLE;
+				return;
+			case MIDI_CLOCK:
+			case MIDI_TICK:
+			case MIDI_START:
+			case MIDI_CONTINUE:
+			case MIDI_STOP:
+			case MIDI_ACTIVE_SENSE:
+			default:
+				break;
+		}
+	}
+
+	if( state == MIDI_STATE_IDLE )
+	{
+		switch( GET_MIDI_CMD(dataRX) )
 		{
 			case MIDI_NOTE_OFF:
 			case MIDI_NOTE_ON:
 			case MIDI_AFTER_TOUCH:
 			case MIDI_CONTROL_CHANGE:
 			case MIDI_PITCH_BEND:
-				packet.cin = dataByte >> 4; // Save Code Index Number (cmd)
-				packet.cmd = dataByte;      // Save 'status byte' (cmd)
-				state      = DATA12;        // Step to 'data byte 1 of 2'
+				packet.midi.cin = dataRX >> 4;   // Save Code Index Number (cmd)
+				packet.midi.cmd = dataRX;        // Save 'status byte' (cmd)
+				state = MIDI_STATE_DATA1;        // Step to 'data byte 1 of 2'
 				break;
 			case MIDI_PROGRAM_CHANGE:
 			case MIDI_CHANNEL_PRESSURE:
-				packet.cin = dataByte >> 4; // Save Code Index Number (cmd)
-				packet.cmd = dataByte;      // Save 'status byte' (cmd)
-				state      = DATA11;        // Step to 'data byte 1 of 1'
-				break;
-			case MIDI_RESET:
-				nMidiCount = 0;             // Reset byte counter in packet
-				state      = IDLE;          // Reset state
+				packet.midi.cin = dataRX >> 4;   // Save Code Index Number (cmd)
+				packet.midi.cmd = dataRX;        // Save 'status byte' (cmd)
+				state = MIDI_STATE_DATA;         // Step to single data byte
 				break;
 			case MIDI_SYSEX_START:
-				// skip SysEx
-				state = SYSEX;
+				switch( dataRX )
+				{
+					case MIDI_SYSEX_START:       // Start SysEx stream
+						packet.midi.cin = 0;     // Default CIN #0
+						packet.midi.cmd = dataRX;
+						aMidiBuffer[nMidiCount++] = dataRX;
+						state = MIDI_STATE_SYSEX;
+						break;
+					case MIDI_TIME_CODE:
+					case MIDI_SONG_SELECT:       // Cmd with single data byte
+						packet.midi.cin = 0;
+						packet.midi.cmd = dataRX;
+						state = MIDI_STATE_DATA;
+						break;
+					case MIDI_SONG_POSITION:      // Cmd with two data bytes
+						packet.midi.cin = 0;
+						packet.midi.cmd = dataRX;
+						state = MIDI_STATE_DATA1;
+						break;
+				}
 				break;
 			default:
 				//--- unknown command: skip.
 				break;
 		}
 	}
-	else if( state==DATA12 )
+	else if( state == MIDI_STATE_DATA1 )
 	{
-		packet.data1 = dataByte;            // Save 'data byte 1 of 2'
-		state        = DATA22;              // Step to 'data byte 2 of 2'
+		state = MIDI_STATE_DATA2;                // Step to 'data byte 2 of 2'
+		packet.midi.data[0] = dataRX;            // Save 'data byte 1 of 2'
 	}
-	else if( state==DATA11 )
+	else if( state == MIDI_STATE_DATA2 )
 	{
-		state        = IDLE;                // Reset state (finished)
-		packet.data1 = dataByte;            // Save 'data byte 1 of 1'
-		if( nMidiCount+3 < MIDI_BUF_SIZE )  // Check for free space in buffer
+		state = MIDI_STATE_IDLE;                 // Reset state (finished)
+		packet.midi.data[1] = dataRX;            // Save 'data byte 2 of 2'
+		if( nMidiCount+4 <= MIDI_BUF_SIZE )      // Check for free space
 		{
-			// Put MIDI message into the stream.
-			aMidiBuffer[nMidiCount++] = packet.cin;
-			aMidiBuffer[nMidiCount++] = packet.cmd;
-			aMidiBuffer[nMidiCount++] = packet.data1;
+			// Put MIDI message into the USB stream (32-bit aligned).
+			aMidiBuffer[nMidiCount++] = packet.midi.cin;
+			aMidiBuffer[nMidiCount++] = packet.midi.cmd;
+			aMidiBuffer[nMidiCount++] = packet.midi.data[0];
+			aMidiBuffer[nMidiCount++] = packet.midi.data[1];
 		}
 	}
-	else if( state==DATA22 )
+	else if( state == MIDI_STATE_DATA )
 	{
-		state        = IDLE;                // Reset state (finished)
-		packet.data2 = dataByte;            // Save 'data byte 2 of 2'
-		if( nMidiCount+4 < MIDI_BUF_SIZE )  // Check for free space
+		state = MIDI_STATE_IDLE;                 // Reset state (finished)
+		packet.midi.data[0] = dataRX;            // Save 'data byte 1 of 1'
+		if( nMidiCount+4 <= MIDI_BUF_SIZE )      // Check for free space
 		{
-			// Put MIDI message into the stream.
-			aMidiBuffer[nMidiCount++] = packet.cin;
-			aMidiBuffer[nMidiCount++] = packet.cmd;
-			aMidiBuffer[nMidiCount++] = packet.data1;
-			aMidiBuffer[nMidiCount++] = packet.data2;
+			// Put MIDI message into the USB stream (zero padding).
+			aMidiBuffer[nMidiCount++] = packet.midi.cin;
+			aMidiBuffer[nMidiCount++] = packet.midi.cmd;
+			aMidiBuffer[nMidiCount++] = packet.midi.data[0];
+			aMidiBuffer[nMidiCount++] = 0;
 		}
 	}
-	else if( state==SYSEX )
+	else if( state == MIDI_STATE_SYSEX )
 	{
-		if( dataByte==MIDI_SYSEX_END )
+		if( nMidiCount <= MIDI_BUF_SIZE )        // Check for free space
 		{
-			// skip SysEx
-			state = IDLE;
+			aMidiBuffer[nMidiCount++] = dataRX;
 		}
-		// SKIP...
-		state = IDLE;
+		if( dataRX == MIDI_SYSEX_END )           // Exit SysEx stream (finish)
+		{
+			state = MIDI_STATE_IDLE;
+		}
 	}
 }
 
 //---------------------------------------------------------------------------//
 // USB -> MIDI Converter.                                                    //
 // Input: MIDI EVENT Packet in aUsbBuffer[]                                  //
+// USB MIDI Event Packet:                                                    //
+//     <cin, cmd> <status/cmd byte> <data byte #0> <data byte #1 or zero>    //
 //---------------------------------------------------------------------------//
 void USB2MIDI (uint8_t dataIn)
 {
-	static MIDI_STATE        state;         // Finite-State-Machine variable
-	static MIDI_EVENT_PACKET packet;        // USB2MIDI packet (for debug)
+	static MIDI_STATE state;                // Finite-State-Machine variable
 
-	if( state==IDLE )
+	if( state == MIDI_STATE_IDLE )
 	{
-		if( (dataIn >> 4)==0 )              // Check our Cable #0
+		if( (dataIn >> 4)==0 )              // Check our Cable number (#0)
 		{
-			packet.cable = 0;               // Save cable number
-			packet.cin   = dataIn << 4;     // Save Code Index Number (cmd)
-			state = STATUS;                 // Step to 'status byte' state
+			state = MIDI_STATE_STATUS;      // Step to 'status/cmd byte' state
 		}
 	}
-	else if( state==STATUS )
+	else if( state == MIDI_STATE_STATUS )
 	{
-		switch( dataIn & MIDI_CMD_BITMASK )
+		switch( GET_MIDI_CMD(dataIn) )
 		{
 			case MIDI_NOTE_OFF:
 			case MIDI_NOTE_ON:
 			case MIDI_AFTER_TOUCH:
 			case MIDI_CONTROL_CHANGE:
 			case MIDI_PITCH_BEND:
-				state      = DATA12;        // Step to 'data byte 1 of 2'
-				packet.cmd = dataIn;        // Save command (status byte)
-				UART0_Write( dataIn );      // Output MIDI command
+				state = MIDI_STATE_DATA1;   // Step to first 'data byte 1/2'
+				UART1_Write( dataIn );      // Output MIDI status byte (cmd)
 				break;
 			case MIDI_PROGRAM_CHANGE:
 			case MIDI_CHANNEL_PRESSURE:
-				state      = DATA11;        // Step to 'data byte 1 of 1'
-				packet.cmd = dataIn;        // Save command (status byte)
-				UART0_Write( dataIn );      // Output MIDI command
+				state = MIDI_STATE_DATA;    // Step to single 'data byte'
+				UART1_Write( dataIn );      // Output MIDI status byte (cmd)
+				break;
+			case MIDI_SYSEX_START:
+				UART1_Write( dataIn );      // Output SysEx status byte (cmd)
+				if( dataIn == MIDI_SYSEX_START )
+				{
+					state = MIDI_STATE_SYSEX;
+				}
 				break;
 			default:
 				//--- unknown command: skip.
-				state = IDLE;
+				state = MIDI_STATE_IDLE;
 				break;
 		}
 	}
-	else if( state==DATA12 )
+	else if( state == MIDI_STATE_DATA && MIDI_IS_DATA(dataIn) )
 	{
-		state        = DATA22;              // Step to read 'data byte 2 of 2'
-		packet.data1 = dataIn;              // Save 'data byte 1 of 2'
-		UART0_Write( dataIn );              // Output MIDI data byte
+		state = MIDI_STATE_IDLE;            // End of packet (finished)
+		UART1_Write( dataIn );              // Output into MIDI this data byte
 	}
-	else if( state==DATA11 )
+	else if( state == MIDI_STATE_DATA1 && MIDI_IS_DATA(dataIn) )
 	{
-		state        = IDLE;                // End of packet (finished)
-		packet.data1 = dataIn;              // Save 'data byte 1 of 1'
-		UART0_Write( dataIn );              // Output MIDI data byte
+		state = MIDI_STATE_DATA2;           // Step to read second byte
+		UART1_Write( dataIn );              // Output into MIDI this data byte
 	}
-	else if( state==DATA22 )
+	else if( state == MIDI_STATE_DATA2 && MIDI_IS_DATA(dataIn) )
 	{
-		state        = IDLE;                // End of packet (finished)
-		packet.data2 = dataIn;              // Save 'data byte 2 of 2'
-		UART0_Write( dataIn );              // Output MIDI data byte
+		state = MIDI_STATE_IDLE;            // End of packet (finished)
+		UART1_Write( dataIn );              // Output into MIDI this data byte
+	}
+	else if( state == MIDI_STATE_SYSEX )
+	{
+		UART1_Write( dataIn );              // Output SysEx data byte
+		if( dataIn == MIDI_SYSEX_END )      // Check for SysEx End
+		{
+			state = MIDI_STATE_IDLE;
+		}
 	}
 	else
 	{
-		// no SysEx here...
-		state = IDLE;
+		state = MIDI_STATE_IDLE;            // Skip unknown command
 	}
 }
