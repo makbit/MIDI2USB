@@ -1,4 +1,4 @@
-# MIDI2USB - Free and improved MIDI to USB Converter (v.1.2 Sept 2021)
+# MIDI2USB - Free and improved MIDI to USB Converter (v.1.3 Nov 2022)
 
 This device is designed to connect various musical instruments to a PC via the USB Fullspeed port. This is an improved version of the chinese **USB2MIDI** adapter in the same case. There are: 1 IN port, 1 OUT port, 16 channels/instruments, Plug-and-Play feature, Build-in drivers. The adapter is compatible with Windows (32-bit, 64-bit) and was tested with MIDI-OX, MuseScore, Cubase, etc.
 
@@ -23,6 +23,7 @@ In the [`Firmware`](Firmware) folder you will find all C-source files for this p
 ### TODO :pen:
 - [x] Switch to UART#1 with FIFO buffer (done);
 - [x] Test and improve SysEx handler (done);
+- [x] Added Real-Time Message handler (done/test required);
 - [ ] Move all components to one side;
 - [ ] Add 4-pin header to optionaly solder USB cable;
 - [ ] Find a sponsor :smile:
