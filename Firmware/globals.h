@@ -2,7 +2,7 @@
 // File:    Globals.h - Definitions, Macros, Global variables and functions. //
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
-// Date:    September 2021, May-August 2020                                  //
+// Date:    November 2022, September 2021, May-August 2020                   //
 //---------------------------------------------------------------------------//
 #include <stdint.h>
 #include <stdbool.h>
@@ -17,6 +17,7 @@
 
 extern volatile SI_SEG_IDATA uint8_t nUsbCount;
 extern volatile SI_SEG_IDATA uint8_t nMidiCount;
+extern volatile SI_SEG_IDATA uint8_t nMidiRTMsg;
 extern          SI_SEG_XDATA uint8_t aUsbBuffer [USB_BUF_SIZE];
 extern          SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];
 

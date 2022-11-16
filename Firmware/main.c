@@ -2,7 +2,7 @@
 // Project: Midi2Usb - firmware that connects musical instruments to PC.     //
 //                     Converter USB <=> MIDI (in, out).                     //
 // File:    Main.c - Firmware entry point, initialization and main loop.     //
-// Date:    September 2021, May-August 2020, version 1.2                     //
+// Date:    November 2022, September 2021, May-August 2020, version 1.3      //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
 // Source:  https://github.com/makbit/Midi2USB                               //
 // License: Free for non-commercial use.                                     //
@@ -21,10 +21,12 @@
 #include "globals.h"
 
 // Global variables
-volatile SI_SEG_IDATA uint8_t nUsbCount  = 0;    // Data bytes in USB->MIDI
-volatile SI_SEG_IDATA uint8_t nMidiCount = 0;    // Data bytes in MIDI->USB
-SI_SEG_XDATA uint8_t aUsbBuffer [USB_BUF_SIZE];  // Buffer for USB->MIDI
-SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE]; // Buffer for MIDI->USB
+volatile SI_SEG_IDATA uint8_t nUsbCount  = 0;      // Data bytes in USB->MIDI
+volatile SI_SEG_IDATA uint8_t nMidiCount = 0;      // Data bytes in MIDI->USB
+volatile SI_SEG_IDATA uint8_t nMidiRTMsg = 0;      // Real-Time Message (0-none)
+SI_SEG_XDATA uint8_t aUsbBuffer [USB_BUF_SIZE];    // Buffer for USB->MIDI
+SI_SEG_XDATA uint8_t aMidiBuffer[MIDI_BUF_SIZE];   // Buffer for MIDI->USB
+SI_SEG_XDATA uint8_t aMidiRTMsg[sizeof(uint32_t)]; // MIDI_RTMsg->USB
 
 //---------------------------------------------------------------------------//
 //                                                                           //
@@ -42,6 +44,23 @@ int main( void )
 
 	while(1)
 	{
+		//--- MIDI RTMsg => USB
+		// System Real Time messages are given priority over other messages.
+		// These single-byte messages may occure anywhere in the data stream.
+		if( nMidiRTMsg )
+		{
+			IE_EA  = false;                 // Begin: Critical section
+			aMidiRTMsg[0] = 0x0F;           // Cable=0, Code = 0xF
+			aMidiRTMsg[1] = nMidiRTMsg;     // Real-Time Message
+			aMidiRTMsg[2] = 0;              // not used
+			aMidiRTMsg[3] = 0;              // not used
+			if( USB_STATUS_OK==USBD_Write(EP1IN,aMidiRTMsg,sizeof(uint32_t),false) )
+			{
+				nMidiRTMsg = 0;             // Clear MIDI Real-Time Message
+			}
+			IE_EA  = true;                  // End of: Critical section
+		}
+
 		//--- MIDI => USB
 		if( nMidiCount >= sizeof(uint32_t) )
 		{

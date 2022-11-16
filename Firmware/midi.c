@@ -2,7 +2,7 @@
 // File:    Midi.c - MIDI constant definitions, MIDI Event packet parser.    //
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
-// Date:    September 2021, May-August 2020                                  //
+// Date:    November 2022, September 2021, May-August 2020                   //
 //---------------------------------------------------------------------------//
 #include "globals.h"
 
@@ -77,12 +77,13 @@ void MIDI2USB(uint8_t dataRX)
 	static MIDI_STATE        state;
 	static MIDI_EVENT_PACKET packet;
 
-	if( MIDI_IS_STATUS(dataRX) )            // System Real Time message
+	if( MIDI_IS_STATUS(dataRX) )            // System Real Time message (p.7)
 	{
 		switch( dataRX )
 		{
 			case MIDI_SYSTEM_RESET:
 				nMidiCount = 0;
+				nMidiRTMsg = dataRX;
 				state = MIDI_STATE_IDLE;
 				return;
 			case MIDI_CLOCK:
@@ -91,6 +92,8 @@ void MIDI2USB(uint8_t dataRX)
 			case MIDI_CONTINUE:
 			case MIDI_STOP:
 			case MIDI_ACTIVE_SENSE:
+				nMidiRTMsg = dataRX;
+				return;
 			default:
 				break;
 		}
