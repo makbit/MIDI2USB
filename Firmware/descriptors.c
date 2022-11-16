@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------//
 // Project: Midi2Usb - MIDI to USB converter.                                //
 // File:    descriptors.c - this file contains USB descriptor data tables.   //
-// Date:    September 2021, May 2020                                         //
+// Date:    November 2022, September 2021, May 2020                          //
 // Author:  Maximov K.M. (c) https://makbit.com                              //
 // Info:    https://keil.com/pack/doc/mw/USB/html/_u_s_b__descriptors.html   //
 //          midi10.pdf ("USB Device Class Definition  for  MIDI Devices")    //
@@ -46,7 +46,7 @@ SI_SEGMENT_VARIABLE
 	SLAB_USB_EP1IN_MAX_PACKET_SIZE,    // bMaxPacketSize0, 64 bytes
 	htole16(0x1209),                   // idVendor, Free GPL (or SiLabs 0x10C4)
 	htole16(0x7522),                   // idProduct, Makbit MIDI2USB
-	htole16(0x0120),                   // bcdDevice, my ver. 1.20
+	htole16(0x0130),                   // bcdDevice, my ver. 1.30
 	0x01,                              // iManufacturer string
 	0x02,                              // iProduct string
 	0x03,                              // iSerialNumber (no serial string)
