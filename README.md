@@ -1,5 +1,12 @@
 # MIDI2USB - Free and improved MIDI to USB Converter (v.1.3 Nov 2022)
 
+![GitHub repo size](https://img.shields.io/github/repo-size/makbit/MIDI2USB)
+![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/makbit/MIDI2USB)
+![GitHub all releases](https://img.shields.io/github/downloads/makbit/MIDI2USB/total)
+![GitHub search hit counter](https://img.shields.io/github/search/makbit/MIDI2USB/usb)
+![GitHub search hit counter](https://img.shields.io/github/search/makbit/MIDI2USB/midi)
+![GitHub search hit counter](https://img.shields.io/github/search/makbit/MIDI2USB/silabs)
+
 This device is designed to connect various musical instruments to a PC via the USB Fullspeed port. This is an improved version of the chinese **USB2MIDI** adapter in the same case. There are: 1 IN port, 1 OUT port, 16 channels/instruments, Plug-and-Play feature, Build-in drivers. The adapter is compatible with Windows (32-bit, 64-bit) and was tested with MIDI-OX, MuseScore, Cubase, etc.
 
 The device is based on Silicon Laboratories 8-bit 8051 MCU [EFM8UB20F32](https://www.silabs.com/mcu/8-bit/efm8-universal-bee/device.efm8ub20f32g-qfp32), (avg. price $2). This MCU has Fullspeed USB controller and adjustable internal oscillator (0.25%). You can use any compatible MCU, for example [C8051F380](https://www.silabs.com/mcu/8-bit/c8051f38x/device.c8051f380-gq).
